@@ -1,15 +1,31 @@
 from airflow import DAG
-from airflow.operators.empty import EmptyOperator
+from airflow.operators.bash import BashOperator
 from datetime import datetime
+
+
+default_args = {
+    "owner": "airflow",
+    "start_date": datetime(2024, 1, 1),
+    "retries": 0,
+}
+
 
 with DAG(
     dag_id="etl_pipeline",
-    start_date=datetime(2024, 1, 1),
+    default_args=default_args,
     schedule_interval=None,
     catchup=False,
+    tags=["etl", "spark"],
 ) as dag:
 
-    start = EmptyOperator(task_id="start")
-    end = EmptyOperator(task_id="end")
+    spark_transform = BashOperator(
+        task_id="spark_transform",
+        bash_command=(
+            "docker exec spark-master "
+            "/opt/spark/bin/spark-submit "
+            "--master spark://spark-master:7077 "
+            "/data/services/transformer/job.py"
+        ),
+    )
 
-    start >> end
+    spark_transform

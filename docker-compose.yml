@@ -31,6 +31,7 @@ services:
       "
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
 
   airflow-webserver:
     image: apache/airflow:2.8.1
@@ -40,6 +41,7 @@ services:
       - airflow/config/airflow.env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8080:8080"
     command: webserver
@@ -52,11 +54,13 @@ services:
       - airflow/config/airflow.env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
 
   spark-master:
     image: apache/spark:3.4.2
     container_name: spark-master
+    restart: always
     command: >
       /opt/spark/bin/spark-class
       org.apache.spark.deploy.master.Master
@@ -65,10 +69,12 @@ services:
       - "8081:8080"
     volumes:
       - ./data:/data
+      - ./services:/data/services
 
   spark-worker:
     image: apache/spark:3.4.2
     container_name: spark-worker
+    restart: always
     depends_on:
       - spark-master
     command: >
@@ -77,6 +83,7 @@ services:
       spark://spark-master:7077
     volumes:
       - ./data:/data
+      - ./services:/data/services
 
 volumes:
   postgres_data:
