@@ -20,18 +20,10 @@ services:
       - airflow/config/airflow.env
     entrypoint: >
       bash -c "
-      airflow db migrate &&
-      airflow users create
-        --username admin
-        --password admin
-        --firstname Admin
-        --lastname User
-        --role Admin
-        --email admin@example.com
+      airflow db migrate
       "
     volumes:
       - ./airflow/dags:/opt/airflow/dags
-      - /var/run/docker.sock:/var/run/docker.sock
 
   airflow-webserver:
     image: apache/airflow:2.8.1
@@ -41,7 +33,6 @@ services:
       - airflow/config/airflow.env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
-      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "8080:8080"
     command: webserver
@@ -54,16 +45,13 @@ services:
       - airflow/config/airflow.env
     volumes:
       - ./airflow/dags:/opt/airflow/dags
-      - /var/run/docker.sock:/var/run/docker.sock
     command: scheduler
 
   spark-master:
     image: apache/spark:3.4.2
     container_name: spark-master
-    restart: always
-    command: >
-      /opt/spark/bin/spark-class
-      org.apache.spark.deploy.master.Master
+    environment:
+      - SPARK_MODE=master
     ports:
       - "7077:7077"
       - "8081:8080"
@@ -74,13 +62,11 @@ services:
   spark-worker:
     image: apache/spark:3.4.2
     container_name: spark-worker
-    restart: always
     depends_on:
       - spark-master
-    command: >
-      /opt/spark/bin/spark-class
-      org.apache.spark.deploy.worker.Worker
-      spark://spark-master:7077
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
     volumes:
       - ./data:/data
       - ./services:/data/services
