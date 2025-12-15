@@ -12,37 +12,41 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  airflow-init:
-    image: apache/airflow:2.8.1
-    depends_on:
-      - postgres
-    env_file:
-      - airflow/config/airflow.env
-    entrypoint: >
-      bash -c "
-      airflow db migrate
-      "
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-
   airflow-webserver:
     image: apache/airflow:2.8.1
+    container_name: airflow-webserver
+    restart: always
     depends_on:
-      - airflow-init
-    env_file:
-      - airflow/config/airflow.env
+      - postgres
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://etl_user:etl_password@postgres/etl_db
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+
+      # to disable authentication
+      AIRFLOW__WEBSERVER__AUTHENTICATE: "False"
+      AIRFLOW__WEBSERVER__RBAC: "False"
+
     volumes:
       - ./airflow/dags:/opt/airflow/dags
     ports:
       - "8080:8080"
-    command: webserver
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow webserver
+      "
 
   airflow-scheduler:
     image: apache/airflow:2.8.1
+    container_name: airflow-scheduler
+    restart: always
     depends_on:
-      - airflow-init
-    env_file:
-      - airflow/config/airflow.env
+      - airflow-webserver
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://etl_user:etl_password@postgres/etl_db
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
     volumes:
       - ./airflow/dags:/opt/airflow/dags
     command: scheduler
